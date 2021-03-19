@@ -114,9 +114,13 @@
                   <p>No.{{(item.id)}} {{item.name.toUpperCase()}}</p>
                 </div>
               </div>
-
           </div>
         </div>
+      </div>
+      <div id="loader" class="loader" v-if="isLoading">
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
       </div>
       <div class="footer">Icons made by <a href="" title="Those Icons">Those Icons</a> from <a href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a></div>
     </div>
@@ -125,59 +129,39 @@
 
 <script>
 import axios from 'axios';
-// import typeicon from './TypeIcon.vue';
 
 export default {
   name: 'Pokedex',
-//   components: {
-//     typeicon
-//   },
   data() {
     return {
       pending: true,
       error: false,
+      isLoading: false,
+      CurrentPokemons: [],
       PokemonList: [],
       filteredPokemons:[],
       keyword: '',
+      type: '',
+      offset: 0,
     };
   },
-
-  mounted() {
+  created() {
     this.requestData();
-  },
-  computed: {
-    Pokemons: {
-      get:function() {
-        let selects = [];
-        for(let i in this.PokemonList) {
-          let select = this.PokemonList[i];
-          if(select.name.indexOf(this.keyword) !== -1) {
-            selects.push(select);
-          }
-        }
-        return selects;
-      },
-      set:function(value) {
-		console.log(value);
-		for (let i in value) {
-          this.Pokemons.push(value[i]);
-		}
-      }
-    }
+    window.addEventListener('scroll', this.onScroll)
   },
   methods: {
     async requestData() {
-      this.pending = true;
-      this.filteredPokemons =[];
+      if (this.isLoading == false){
+          this.isLoading = true;
       try {
-		const res = await axios.get("https://pokeapi.co/api/v2/pokemon?offset=0&limit=251")
-		this.PokemonList = res.data.results;
+		const res = await axios.get(`https://pokeapi.co/api/v2/pokemon?offset=${this.offset}&limit=30`)
+		this.CurrentPokemons = res.data.results;
         this.error = false;
       } catch (e) {
         this.error = e;
       }
       try {
-        for (const result of this.PokemonList)
+        for (const result of this.CurrentPokemons)
         {
           const detailinfo = await axios.get(result.url);
           result["id"] = detailinfo.data.id;
@@ -186,38 +170,78 @@ export default {
             typelist.push(detailinfo.data.types[i].type.name);
           }
           result["type"] = typelist;
+          this.PokemonList.push(result);
         }
-		this.filteredPokemons = this.PokemonList;
+		if (this.keyword) {
+          this.filterByKeyword();
+		}
+		else if (this.type) {
+          this.addTypeData();
+		} else {
+          this.filteredPokemons = this.PokemonList;
+		}
+		this.isLoading = false;
       } catch(e) {
           this.error = e;
       }
       this.pending = false;
+      }
+	},
+	addTypeData() {
+      for (let i in this.CurrentPokemons){
+        for (let j in this.CurrentPokemons[i].type){
+            if (this.type == this.CurrentPokemons[i].type[j]){
+              this.filteredPokemons.push(this.CurrentPokemons[i]);
+            }
+          }
+        }
+	},
+	addKeywordData() {
+     for (let i in this.this.CurrentPokemons) {
+          let select = this.CurrentPokemons[i];
+          if(select.name.indexOf(this.keyword) !== -1) {
+            this.filteredPokemons.push(select);
+          }
+      }
+	},
+	onScroll:function() {
+      const { scrollTop, scrollHeight, clientHeight} = document.documentElement;
+      if (scrollTop + clientHeight >= scrollHeight - 5) {
+        if (this.isLoading == false && this.offset <= 300){
+          this.offset += 30;
+          this.requestData();
+        }
+      }
 	},
 	removeFilter() {
+      this.keyword = '';
+      this.type = '';
       this.filteredPokemons = this.PokemonList;
 	},
 	filterByKeyword() {
-      let keywordPokemons = [];
+      this.type = '';
+      this.filteredPokemons = [];
       for(let i in this.PokemonList) {
           let select = this.PokemonList[i];
           if(select.name.indexOf(this.keyword) !== -1) {
-            keywordPokemons.push(select);
+            this.filteredPokemons.push(select);
           }
       }
-      this.filteredPokemons = keywordPokemons;
 	},
     filterByType(value) {
-      let typedPokemons = [];
+      this.keyword = '';
+      this.filteredPokemons = [];
       if (value === "all"){
+		this.type = '';
         this.filteredPokemons = this.PokemonList;
       } else {
+        this.type = value;
         for (let i in this.PokemonList){
           for (let j in this.PokemonList[i].type){
             if (value === this.PokemonList[i].type[j]){
-              typedPokemons.push(this.PokemonList[i]);
+              this.filteredPokemons.push(this.PokemonList[i]);
             }
           }
-          this.filteredPokemons = typedPokemons;
         }
       }
     },
@@ -284,8 +308,7 @@ export default {
 	color: white;
 }
 .pokemon-display {
-	padding-right: 50px;
-	padding-left: 50px;
+	padding: 0px 50px 50px 50px;
 	text-align: center;
 }
 .card {
@@ -305,6 +328,42 @@ export default {
 }
 .card-img-top:hover {
 	width: 120px;
+}
+.loader {
+	opacity: 1;
+	display: flex;
+	position: fixed;
+	left: 50%;
+	bottom: 30px;
+	transition: opacity 0.3s ease-in;
+}
+/* .loader.show {
+	opacity: 1;
+} */
+.circle {
+	display: inline-block;
+	background-color : red;
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	margin: 5px;
+	animation: bounce 0.5s ease-in infinite;
+}
+.circle:nth-of-type(2) {
+	animation-delay: 0.1s;
+
+}
+.circle:nth-of-type(3) {
+	animation-delay: 0.2s;
+}
+@keyframes bounce {
+	0%,
+	100% {
+		transform: translateY(0);
+	}
+	50% {
+		transform: translateY(-10px);
+	}
 }
 .footer {
 	text-align: center;
