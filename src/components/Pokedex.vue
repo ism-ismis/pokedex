@@ -143,6 +143,7 @@ export default {
       keyword: '',
       type: '',
       offset: 0,
+      limit: 30
     };
   },
   created() {
@@ -154,7 +155,7 @@ export default {
       if (this.isLoading == false){
           this.isLoading = true;
       try {
-		const res = await axios.get(`https://pokeapi.co/api/v2/pokemon?offset=${this.offset}&limit=30`)
+		const res = await axios.get(`https://pokeapi.co/api/v2/pokemon?offset=${this.offset}&limit=${this.limit}`)
 		this.CurrentPokemons = res.data.results;
         this.error = false;
       } catch (e) {
@@ -207,10 +208,15 @@ export default {
 	onScroll:function() {
       const { scrollTop, scrollHeight, clientHeight} = document.documentElement;
       if (scrollTop + clientHeight >= scrollHeight - 5) {
-        if (this.isLoading == false && this.offset <= 300){
+        if (this.isLoading == false && this.offset <= 810){
           this.offset += 30;
           this.requestData();
+        } else if (this.isLoading == false && this.offset == 840){
+          this.limit = 28;
+          this.offset = 870;
+          this.requestData();
         }
+
       }
 	},
 	removeFilter() {
